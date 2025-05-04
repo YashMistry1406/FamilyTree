@@ -1,0 +1,43 @@
+import { ReactFlow, MiniMap, ReactFlowProvider, Background, Controls } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+ 
+import { defaultNodes } from './nodes';
+import { defaultEdges } from './edges';
+ 
+ 
+function App() {
+    const nodes = [ {
+    id: '1',
+    data: { label: 'Hello' },
+    position: { x: 0, y: 0 },
+    type: 'input',
+  },
+  {
+    id: '2',
+    data: { label: 'World' },
+    position: { x: 100, y: 100 },
+  },
+];
+  return (
+//<div style={{ width: '100vw', height: '100vh' }}>
+//      <ReactFlow nodes={nodes}>
+//      <Background/>
+//      <Controls />
+//      </ReactFlow>
+//      </div>
+      <>
+      <label>
+      First Name
+
+      <input type="text"/>
+      </label>
+      <label>
+      Last Name :  
+      <input type="text" />
+      </label>
+      </>
+  );
+}
+ 
+export default App
+
