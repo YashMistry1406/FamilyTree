@@ -39,15 +39,15 @@ function App() {
     const [contextMenu, setContextMenu] = useState(null); // { x, y, edgeId }
 
     const onNodesChange = useCallback(
-        (changes) => setNodes((nds) => applyNodeChanges(changes,nds)),[setNodes]
+        (changes) => setNodes((nds) => applyNodeChanges(changes,nds)),[]
     )
 
     const onEdgeChange = useCallback(
-        (changes) => setEdges((edgs) => applyEdgeChanges(changes,edgs)),[setEdges]
+        (changes) => setEdges((edgs) => applyEdgeChanges(changes,edgs)),[]
     )
 
     const onConnect = useCallback(
-        (conn) => setEdges((edgs)=> addEdge(conn,edgs)),[setEdges]
+        (conn) => setEdges((edgs)=> addEdge(conn,edgs)),[]
     )
 
 
