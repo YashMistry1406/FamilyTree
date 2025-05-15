@@ -75,16 +75,12 @@ function App() {
             try {
                 const response = await axios.get('http://localhost:8080/allusers');
 
-
-                //response.data.forEach(itr=> {
-                //    console.log(itr.relationship.sourceId)
-                //})
                 console.log(response)
 
                 const newNode = response.data.map(item => ({
                     id: item.from.ID,
                     type: 'customNode',
-                    position: { x: randomNumber(), y: randomNumber() },
+                    position: { x: item.from.pos_x , y: item.from.pos_y},
                     data: { name: item.from.name }
                 }))
 
@@ -94,8 +90,6 @@ function App() {
                         (newNode) => !nodes.some((existingNode) => existingNode.id === newNode.id)
                     )
                 ];
-
-
                 const newEdges = response.data
                     .filter(itr => itr.relationship !== undefined)
                     .map(itr => ({
@@ -109,11 +103,6 @@ function App() {
                     return [...prevEdges, ...dedupedEdges];
                 });
 
-                //
-                //setEdges((prevEdges) => [
-                //    ...prevEdges,
-                //    ...newEdges
-                //]);
                 setNodes(uniqueNodes)
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -123,6 +112,30 @@ function App() {
         fetchData();
     }, [])
 
+    const onNodeDragStop = (e, node) => {
+
+        console.log(e)
+        setNodes((nds) =>
+            nds.map((n) => (n.id === node.id ? { ...n, position: node.position } : n))
+        )
+
+
+        const fetchData = async () => {
+            try {
+
+                const response = await axios.post('http://localhost:8080/updatepos',
+                    {
+                        id: node.id,
+                        pos_x: node.position.x,
+                        pos_y: node.position.y
+                    })
+            }
+            catch (error) {
+                console.error(error)
+            }
+        }
+        fetchData()
+    }
     return (
         <>
             <div style={{
@@ -138,6 +151,7 @@ function App() {
                     nodeTypes={nodeType}
                     onConnect={onConnect}
                     onEdgeContextMenu={onEdgeContextMenu}
+                    onNodeDragStop={onNodeDragStop}
                 >
                     <Background color='#000000' />
                     <Controls />
