@@ -15,6 +15,7 @@ import MenuContext from './MenuContext';
 import CustomNode from './CustomNode';
 import axios from 'axios';
 import NewUser from './NewUser';
+import EdgeConnect from './EdgeConnect';
 
 const initialNodes = [
 ];
@@ -29,9 +30,12 @@ function App() {
 
     const [nodes, setNodes] = useState(initialNodes);
     const [edges, setEdges] = useState(initialEdges);
-    const [contextMenu, setContextMenu] = useState(null); // { x, y, edgeId }
-    const [nodecontextMenu, setNodeContextMenu] = useState(null); // { x, y, edgeId }
-    const [createUserForm, setCreateUserForm] = useState(false)
+    const [contextMenu, setContextMenu] = useState(null);
+    const [nodecontextMenu, setNodeContextMenu] = useState(null);
+    const [createUserForm, setCreateUserForm] = useState(false);
+    const [pendingConnection, setPendingConnection] = useState(null); // to store temporary edge
+    const [showRelationModal, setShowRelationModal] = useState(false);
+
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []
@@ -41,10 +45,12 @@ function App() {
         (changes) => setEdges((edgs) => applyEdgeChanges(changes, edgs)), []
     )
 
-    const onConnect = useCallback(
-        (connection) => setEdges((eds) => addEdge(connection, eds)),
-        [setEdges]
-    );
+    const onConnect = (e) => {
+        setPendingConnection(e)
+        setShowRelationModal(true)
+    }
+
+
     function randomNumber() { return Math.floor(Math.random() * 100) + 1; }
 
     useEffect(() => {
@@ -212,6 +218,46 @@ function App() {
         }
         setContextMenu(null);
     };
+
+    const afterConnected = useCallback(
+        (params) => {
+            // `params` contains { source, sourceHandle, target, targetHandle }
+            setEdges((eds) => addEdge(params, eds));
+        },
+        []
+    );
+
+    const onRelationSelect = async (relationType) => {
+        try {
+            const { source, target } = pendingConnection
+            const repsonse = await axios.post('http://localhost:8080/createrelation', null, {
+                params: {
+                    sourceID: source,
+                    targetID: target,
+                    relation: relationType,
+                }
+            })
+
+            const newEdge = {
+                id: `e${source}-${target}-${relationType}`,
+                source,
+                target,
+                relType: relationType, // Save this for future use like edit/delete
+            };
+
+            setEdges((eds) => addEdge(newEdge, eds));
+
+        } catch (error) {
+            console.error("Failed to create relationship in DB:", error.response?.data || error.message);
+            alert("Failed to create relationship. Please try again.");
+        } finally {
+            // 3. Close modal in all cases
+            setShowRelationModal(false);
+            setPendingConnection(null); // Clean up
+        }
+    }
+
+
     return (
         <>
             <div style={{
@@ -225,10 +271,11 @@ function App() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgeChange}
                     nodeTypes={nodeType}
-                    onConnect={onConnect}
                     onEdgeContextMenu={onEdgeContextMenu}
                     onNodeDragStop={onNodeDragStop}
                     onNodeContextMenu={onNodeContextMenu}
+                    onConnect={onConnect}
+
                 >
                     <Background color='#000000' />
                     <Controls orientation="horizontal">
@@ -245,30 +292,54 @@ function App() {
                     </Controls>
                 </ReactFlow>
 
-                {createUserForm && (
-                    <NewUser onSubmit={createUser}
-                        onCancel={() => setCreateUserForm(false)} />
-                )
-                }
-                {nodecontextMenu && (
-                    <MenuContext
-                        x={nodecontextMenu.x}
-                        y={nodecontextMenu.y}
-                        onOptionClick={handleNodeRightClick}
-                    />
+                {showRelationModal && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            width: '100vw',
+                            height: '100vh',
+                            backgroundColor: 'rgba(0, 0, 0, 0.1)', // optional: slight backdrop
+                            zIndex: 9999, // must be higher than ReactFlow canvas
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <EdgeConnect
+                            onRelationSelect={onRelationSelect}
+                            onClose={() => setShowRelationModal(false)}
+
+                        />
+                    </div>
                 )}
-                {contextMenu && (
-                    <MenuContext
-                        x={contextMenu.x}
-                        y={contextMenu.y}
-                        onOptionClick={handleEdgeRightClick}
-                    />
-                )}
-            </div>
+
+                        {createUserForm && (
+                            <NewUser onSubmit={createUser}
+                                onCancel={() => setCreateUserForm(false)} />
+                        )}
+
+
+                        {nodecontextMenu && (
+                            <MenuContext
+                                x={nodecontextMenu.x}
+                                y={nodecontextMenu.y}
+                                onOptionClick={handleNodeRightClick}
+                            />
+                        )}
+                        {contextMenu && (
+                            <MenuContext
+                                x={contextMenu.x}
+                                y={contextMenu.y}
+                                onOptionClick={handleEdgeRightClick}
+                            />
+                        )}
+                    </div>
         </>
-    )
+            )
 
 }
 
-export default App;
+            export default App;
 
