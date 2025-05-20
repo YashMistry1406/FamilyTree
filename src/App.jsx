@@ -33,7 +33,8 @@ function App() {
     const [contextMenu, setContextMenu] = useState(null);
     const [nodecontextMenu, setNodeContextMenu] = useState(null);
     const [createUserForm, setCreateUserForm] = useState(false);
-    const [pendingConnection, setPendingConnection] = useState(null); // to store temporary edge
+    const [pendingConnection, setPendingConnection] = useState(null);
+    const [relationType, setRelationType] = useState(null);
     const [showRelationModal, setShowRelationModal] = useState(false);
 
 
@@ -169,7 +170,7 @@ function App() {
     const handleEdgeRightClick = (action) => {
         if (action === 'Delete') {
             const deleteEdge = async () => {
-                console.log("in handleEdgeRightClick", contextMenu)
+                //console.log("in handleEdgeRightClick", contextMenu)
                 const response = await axios.delete('http://localhost:8080/deledge', {
                     params: {
                         sourceID: contextMenu.sourceID,
@@ -178,7 +179,7 @@ function App() {
                     },
 
                 })
-                console.log(response)
+                //console.log(response)
             }
             deleteEdge()
             setEdges((eds) => eds.filter((e) => e.id !== contextMenu.edgeId));
@@ -227,14 +228,15 @@ function App() {
         []
     );
 
-    const onRelationSelect = async (relationType) => {
+    const onRelationSelect = async (rel) => {
+        setRelationType(rel)
         try {
             const { source, target } = pendingConnection
             const repsonse = await axios.post('http://localhost:8080/createrelation', null, {
                 params: {
                     sourceID: source,
                     targetID: target,
-                    relation: relationType,
+                    relation: rel,
                 }
             })
 
@@ -242,20 +244,39 @@ function App() {
                 id: `e${source}-${target}-${relationType}`,
                 source,
                 target,
-                relType: relationType, // Save this for future use like edit/delete
-            };
+                relType: rel, // Save this for future use like edit/delete
+            }
 
             setEdges((eds) => addEdge(newEdge, eds));
+
+            setNodes((nds) =>
+                nds.map((node) => {
+                    if (node.id === pendingConnection?.target) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                relationType,
+                            },
+                        };
+                    }
+                    return node;
+                })
+            );
+
+            console.log(nodes)
+
 
         } catch (error) {
             console.error("Failed to create relationship in DB:", error.response?.data || error.message);
             alert("Failed to create relationship. Please try again.");
         } finally {
-            // 3. Close modal in all cases
+            // Close modal in all cases
             setShowRelationModal(false);
             setPendingConnection(null); // Clean up
         }
     }
+
 
 
     return (
@@ -275,7 +296,6 @@ function App() {
                     onNodeDragStop={onNodeDragStop}
                     onNodeContextMenu={onNodeContextMenu}
                     onConnect={onConnect}
-
                 >
                     <Background color='#000000' />
                     <Controls orientation="horizontal">
@@ -300,8 +320,8 @@ function App() {
                             left: 0,
                             width: '100vw',
                             height: '100vh',
-                            backgroundColor: 'rgba(0, 0, 0, 0.1)', // optional: slight backdrop
-                            zIndex: 9999, // must be higher than ReactFlow canvas
+                            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                            zIndex: 9999,
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
@@ -315,31 +335,31 @@ function App() {
                     </div>
                 )}
 
-                        {createUserForm && (
-                            <NewUser onSubmit={createUser}
-                                onCancel={() => setCreateUserForm(false)} />
-                        )}
+                {createUserForm && (
+                    <NewUser onSubmit={createUser}
+                        onCancel={() => setCreateUserForm(false)} />
+                )}
 
 
-                        {nodecontextMenu && (
-                            <MenuContext
-                                x={nodecontextMenu.x}
-                                y={nodecontextMenu.y}
-                                onOptionClick={handleNodeRightClick}
-                            />
-                        )}
-                        {contextMenu && (
-                            <MenuContext
-                                x={contextMenu.x}
-                                y={contextMenu.y}
-                                onOptionClick={handleEdgeRightClick}
-                            />
-                        )}
-                    </div>
+                {nodecontextMenu && (
+                    <MenuContext
+                        x={nodecontextMenu.x}
+                        y={nodecontextMenu.y}
+                        onOptionClick={handleNodeRightClick}
+                    />
+                )}
+                {contextMenu && (
+                    <MenuContext
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        onOptionClick={handleEdgeRightClick}
+                    />
+                )}
+            </div>
         </>
-            )
+    )
 
 }
 
-            export default App;
+export default App;
 
