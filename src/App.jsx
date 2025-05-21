@@ -6,7 +6,8 @@ import {
     applyEdgeChanges,
     applyNodeChanges,
     addEdge,
-    useViewport
+    useViewport,
+    MiniMap
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -46,7 +47,9 @@ function App() {
         (changes) => setEdges((edgs) => applyEdgeChanges(changes, edgs)), []
     )
 
+
     const onConnect = (e) => {
+        console.log("onCOnnect", e)
         setPendingConnection(e)
         setShowRelationModal(true)
     }
@@ -71,7 +74,7 @@ function App() {
                     id: item.from.ID,
                     type: 'customNode',
                     position: { x: item.from.pos_x, y: item.from.pos_y },
-                    data: { name: item.from.name }
+                    data: { name: item.from.name, sourceHandle: item.from.sourceHandle, targetHandle: item.from.targetHandle }
                 }))
 
                 const uniqueNodes = [
@@ -83,9 +86,11 @@ function App() {
                 const newEdges = response.data
                     .filter(itr => itr.relationship !== undefined)
                     .map(itr => ({
-                        id: `e${itr.relationship.sourceId.ID}-${itr.relationship.targetId.ID}`,
+                        id: `e${itr.relationship.sourceId.ID}-${itr.relationship.targetId.ID}-${itr.relationship.type}`,
                         source: itr.relationship.sourceId.ID,
                         target: itr.relationship.targetId.ID,
+                        sourceHandle: itr.relationship.sourceHandle,
+                        targetHandle: itr.relationship.targetHandle,
                         relType: itr.relationship.type
                     }));
                 setEdges((prevEdges) => {
@@ -94,8 +99,8 @@ function App() {
                     return [...prevEdges, ...dedupedEdges];
                 });
 
-
-                setNodes(uniqueNodes)
+                setNodes(uniqueNodes);
+                //setEdges(); 
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
@@ -185,7 +190,7 @@ function App() {
             setEdges((eds) => eds.filter((e) => e.id !== contextMenu.edgeId));
         }
         else if (action === 'Edit') {
-            console.log(nodes)
+            console.log(edges)
         }
         else {
             console.log(`${action} on edge ${contextMenu.edgeId}`);
@@ -231,40 +236,47 @@ function App() {
     const onRelationSelect = async (rel) => {
         setRelationType(rel)
         try {
-            const { source, target } = pendingConnection
-            const repsonse = await axios.post('http://localhost:8080/createrelation', null, {
+            const { source, target, sourceHandle, targetHandle } = pendingConnection
+            console.log("in onRelationSet", rel)
+            const response = await axios.post('http://localhost:8080/createrelation', null, {
                 params: {
                     sourceID: source,
                     targetID: target,
+                    sourceHandle: sourceHandle,
+                    targetHandle: targetHandle,
                     relation: rel,
                 }
             })
+            console.log("onrelationset repsonse", response)
 
             const newEdge = {
-                id: `e${source}-${target}-${relationType}`,
+                id: `e${source}-${target}-${rel}`,
                 source,
                 target,
+                sourceHandle,
+                targetHandle,
                 relType: rel, // Save this for future use like edit/delete
             }
 
             setEdges((eds) => addEdge(newEdge, eds));
 
+
+
             setNodes((nds) =>
                 nds.map((node) => {
-                    if (node.id === pendingConnection?.target) {
+                    if (node.id === target) {
                         return {
                             ...node,
                             data: {
                                 ...node.data,
-                                relationType,
+                                relationType: rel,
                             },
                         };
                     }
                     return node;
                 })
             );
-
-            console.log(nodes)
+            //console.log(nodes)
 
 
         } catch (error) {
@@ -272,6 +284,7 @@ function App() {
             alert("Failed to create relationship. Please try again.");
         } finally {
             // Close modal in all cases
+            console.log("finall", edges)
             setShowRelationModal(false);
             setPendingConnection(null); // Clean up
         }
@@ -296,6 +309,7 @@ function App() {
                     onNodeDragStop={onNodeDragStop}
                     onNodeContextMenu={onNodeContextMenu}
                     onConnect={onConnect}
+                    connectionMode='loose'
                 >
                     <Background color='#000000' />
                     <Controls orientation="horizontal">
